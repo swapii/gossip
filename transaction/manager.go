@@ -30,10 +30,22 @@ type key struct {
 	method string
 }
 
-func NewManager(trans, addr string) (*Manager, error) {
-	t, err := transport.NewManager(trans)
-	if err != nil {
-		return nil, err
+func NewManager(trans interface{}, addr string) (*Manager, error) {
+
+	var err error
+	var t *transport.Manager
+
+	switch trans.(type) {
+
+	case string:
+		t, err = transport.NewManager(trans.(string))
+		if err != nil {
+			return nil, err
+		}
+
+	case transport.TransportWithNotifier:
+		t = transport.NewManagerWithTransport(trans.(transport.TransportWithNotifier))
+
 	}
 
 	mng := &Manager{

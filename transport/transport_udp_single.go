@@ -10,26 +10,26 @@ import (
 	"net"
 )
 
-type Udp struct {
-	listeningPoints []*net.UDPConn
-	output          chan base.SipMessage
-	stop            bool
-	notifier_       notifier
+type UdpSingle struct {
+	connection *net.UDPConn
+	output     chan base.SipMessage
+	stop       bool
+	notifier_  notifier
 }
 
-func NewUdp(output chan base.SipMessage) (*Udp, error) {
+func NewUdpSingle(output chan base.SipMessage) (*UdpSingle, error) {
 
-	newUdp := Udp{listeningPoints: make([]*net.UDPConn, 0), output: output}
+	newUdp := UdpSingle{output: output}
 
 	return &newUdp, nil
 }
 
-func NewUdpWithNotifier() (*Udp, error) {
+func NewUdpSingleWithNotifier() (*UdpSingle, error) {
 
 	var n notifier
 	n.init()
 
-	newUdp, err := NewUdp(n.inputs)
+	newUdp, err := NewUdpSingle(n.inputs)
 
 	if err != nil {
 		n.stop()
@@ -39,50 +39,53 @@ func NewUdpWithNotifier() (*Udp, error) {
 	return newUdp, nil
 }
 
-func (udp *Udp) notifier() notifier {
+func (udp *UdpSingle) notifier() notifier {
 	return udp.notifier_
 }
 
-func (udp *Udp) Listen(address string) error {
+func (udp *UdpSingle) Listen(address string) error {
+
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return err
 	}
 
-	lp, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP("udp", addr)
 
 	if err == nil {
-		udp.listeningPoints = append(udp.listeningPoints, lp)
-		go udp.listen(lp)
+
+		if udp.connection != nil {
+			// close previous connection
+			e := udp.connection.Close()
+			if e != nil {
+				return e
+			}
+		}
+
+		udp.connection = conn
+		go udp.listen(conn)
 	}
 
 	return err
 }
 
-func (udp *Udp) IsStreamed() bool {
+func (udp *UdpSingle) IsStreamed() bool {
 	return false
 }
 
-func (udp *Udp) Send(addr string, msg base.SipMessage) error {
+func (udp *UdpSingle) Send(addr string, msg base.SipMessage) error {
 	log.Debug("Sending message %s to %s", msg.Short(), addr)
 	raddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return err
 	}
 
-	var conn *net.UDPConn
-	conn, err = net.DialUDP("udp", nil, raddr)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	_, err = conn.Write([]byte(msg.String()))
+	_, err = udp.connection.WriteTo([]byte(msg.String()), raddr)
 
 	return err
 }
 
-func (udp *Udp) listen(conn *net.UDPConn) {
+func (udp *UdpSingle) listen(conn *net.UDPConn) {
 	log.Info("Begin listening for UDP on address %s", conn.LocalAddr())
 
 	buffer := make([]byte, c_BUFSIZE)
@@ -110,9 +113,7 @@ func (udp *Udp) listen(conn *net.UDPConn) {
 	}
 }
 
-func (udp *Udp) Stop() {
+func (udp *UdpSingle) Stop() {
 	udp.stop = true
-	for _, lp := range udp.listeningPoints {
-		lp.Close()
-	}
+	udp.connection.Close()
 }

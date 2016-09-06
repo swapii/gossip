@@ -60,10 +60,10 @@ func (t *connTable) manage() {
 				t.conns[addr].conn.Close()
 				delete(t.conns, addr)
 			} else {
-                // Due to a race condition, the socket has been updated since this expiry happened.
-                // Ignore the expiry since we already have a new socket for this address.
-                log.Warn("Ignored spurious expiry for address %s in conntable %p", t, addr)
-            }
+				// Due to a race condition, the socket has been updated since this expiry happened.
+				// Ignore the expiry since we already have a new socket for this address.
+				log.Warn("Ignored spurious expiry for address %s in conntable %p", t, addr)
+			}
 		case <-t.stop:
 			log.Info("Conntable %p stopped")
 			t.stopped = true

@@ -16,40 +16,45 @@ const c_SOCKET_EXPIRY time.Duration = time.Hour
 
 type Manager struct {
 	notifier
-	transport transport
+	transport Transport
 }
 
-type transport interface {
+type Transport interface {
 	IsStreamed() bool
 	Listen(address string) error
 	Send(addr string, message base.SipMessage) error
 	Stop()
 }
 
+type TransportWithNotifier interface {
+	Transport
+	notifier() notifier
+}
+
 func NewManager(transportType string) (manager *Manager, err error) {
-	err = fmt.Errorf("Unknown transport type '%s'", transportType)
 
-	var n notifier
-	n.init()
-
-	var transport transport
+	var transport TransportWithNotifier
 	switch strings.ToLower(transportType) {
 	case "udp":
-		transport, err = NewUdp(n.inputs)
+		transport, err = NewUdpWithNotifier()
 	case "tcp":
-		transport, err = NewTcp(n.inputs)
-	case "tls":
-		// TODO
-	}
-
-	if transport != nil && err == nil {
-		manager = &Manager{notifier: n, transport: transport}
-	} else {
+		transport, err = NewTcpWithNotifier()
+	//TODO case "tls":
+	default:
 		// Close the input chan in order to stop the notifier; this prevents
 		// us leaking it.
-		close(n.inputs)
+		close(transport.notifier().inputs)
+		err = fmt.Errorf("Unknown transport type '%s'", transportType)
+		return
 	}
 
+	manager = NewManagerWithTransport(transport)
+
+	return
+}
+
+func NewManagerWithTransport(transport TransportWithNotifier) (manager *Manager) {
+	manager = &Manager{notifier: transport.notifier(), transport: transport}
 	return
 }
 

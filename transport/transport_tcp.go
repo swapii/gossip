@@ -14,6 +14,7 @@ type Tcp struct {
 	parser          *parser.Parser
 	output          chan base.SipMessage
 	stop            bool
+	notifier_       notifier
 }
 
 func NewTcp(output chan base.SipMessage) (*Tcp, error) {
@@ -21,6 +22,25 @@ func NewTcp(output chan base.SipMessage) (*Tcp, error) {
 	tcp.listeningPoints = make([]*net.TCPListener, 0)
 	tcp.connTable.Init()
 	return &tcp, nil
+}
+
+func NewTcpWithNotifier() (*Tcp, error) {
+
+	var n notifier
+	n.init()
+
+	newTcp, err := NewTcp(n.inputs)
+
+	if err != nil {
+		n.stop()
+		return nil, err
+	}
+
+	return newTcp, nil
+}
+
+func (tcp *Tcp) notifier() notifier {
+	return tcp.notifier_
 }
 
 func (tcp *Tcp) Listen(address string) error {
