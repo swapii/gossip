@@ -15,7 +15,7 @@ const c_LISTENER_QUEUE_SIZE int = 1000
 const c_SOCKET_EXPIRY time.Duration = time.Hour
 
 type Manager struct {
-	notifier
+	*notifier
 	transport Transport
 }
 
@@ -28,7 +28,7 @@ type Transport interface {
 
 type TransportWithNotifier interface {
 	Transport
-	notifier() notifier
+	notifier() *notifier
 }
 
 func NewManager(transportType string) (manager *Manager, err error) {

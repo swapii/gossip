@@ -14,7 +14,7 @@ type Udp struct {
 	listeningPoints []*net.UDPConn
 	output          chan base.SipMessage
 	stop            bool
-	notifier_       notifier
+	notifier_       *notifier
 }
 
 func NewUdp(output chan base.SipMessage) (*Udp, error) {
@@ -30,6 +30,7 @@ func NewUdpWithNotifier() (*Udp, error) {
 	n.init()
 
 	newUdp, err := NewUdp(n.inputs)
+	newUdp.notifier_ = &n
 
 	if err != nil {
 		n.stop()
@@ -39,7 +40,7 @@ func NewUdpWithNotifier() (*Udp, error) {
 	return newUdp, nil
 }
 
-func (udp *Udp) notifier() notifier {
+func (udp *Udp) notifier() *notifier {
 	return udp.notifier_
 }
 

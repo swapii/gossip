@@ -46,6 +46,11 @@ func NewManager(trans interface{}, addr string) (*Manager, error) {
 	case transport.TransportWithNotifier:
 		t = transport.NewManagerWithTransport(trans.(transport.TransportWithNotifier))
 
+	default:
+		//TODO Print what type not supported
+		err := errors.New("Type not supported")
+		panic(err)
+
 	}
 
 	mng := &Manager{
